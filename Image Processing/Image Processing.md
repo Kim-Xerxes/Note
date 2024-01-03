@@ -173,6 +173,26 @@ function B = RegionGrow(I, seed)
 	- 对噪声敏感
 	- 贪婪算法导致太大的区域
 
+
+
+## 9. Splitting Algorithm
+
+https://blog.csdn.net/qq_43349296/article/details/122222469
+
+- 特点
+	- SOTA效果（？）
+	- 需要空间复杂度和时间复杂度
+	- 区分相同的区域有偏置
+	- 对于有纹理的背景划分有困难
+
+
+
+## 10. Split and Merge Algorithm
+
+https://blog.csdn.net/webzhuce/article/details/81431512
+
+
+
 ## 总结
 
 1. **Thresholding**
@@ -204,7 +224,90 @@ function B = RegionGrow(I, seed)
 
 
 
-# 一、图像滤波 Image Filtering
+# 二、图像变换 Image Transformation
+
+## 1. 灰度图像变换
+
+> 通过直方图可以看到像素值的分布情况，通过映射将像素值改变
+>
+> $I_2(x,y)=f(I_1(x,y))$
+
+- **线性变换：对比度拉伸**
+
+	$f(x)=\alpha x+\beta$
+
+	需要保证数值在0~255内
+
+- **非线性变换：伽马值纠正**
+
+	该方法用于调整相机和人眼的敏感度区别
+
+	$f(x)=Ax^\gamma,\ A=255^{1-\gamma}$，其中A的作用可以让像素值范围是保持不变的
+	
+- **直方图均衡化**
+
+  - 计算直方图的累积函数
+  - $h(v)=round(\frac{cdf(v)-cdf_{min}}{(M*N-cdf_{min})}*(L-1))$
+    其中cdf为累积函数，$cdf_{min}$为累积函数的最小值，M*N是像素个数，L是像素值范围一般为256
+
+
+## 2. 几何变换
+
+> 用于改变图像特征的位置，同样通过映射将新的位置映射到旧的位置
+
+- **仿射变换 Affine Transformation**
+
+	$\begin{pmatrix}x' \\ y'\end{pmatrix}=\begin{pmatrix} a & b\\ c & d\end{pmatrix}\begin{pmatrix}x' \\ y'\end{pmatrix}+\begin{pmatrix}t_x \\ t_y\end{pmatrix}$
+
+	- **平移变换**
+
+		$\begin{pmatrix} a & b\\ c & d\end{pmatrix}=\begin{pmatrix} 1 & 0\\ 0 & 1\end{pmatrix},\begin{pmatrix} t_x\\t_y\end{pmatrix}$
+
+	- **缩放变换**
+
+		$\begin{pmatrix} a & b\\ c & d\end{pmatrix}=\begin{pmatrix} 2 & 0\\ 0 & 2\end{pmatrix},\begin{pmatrix} t_x\\t_y\end{pmatrix}=\begin{pmatrix} -w/2\\-h/2\end{pmatrix}$
+
+	- **拉伸变换**
+
+		$\begin{pmatrix} a & b\\ c & d\end{pmatrix}=\begin{pmatrix} 0.5 & 0\\ 0 & 1\end{pmatrix},\begin{pmatrix} t_x\\t_y\end{pmatrix}=\begin{pmatrix} -w/4\\0\end{pmatrix}$
+
+	- **旋转变换**
+
+		$\begin{pmatrix} a & b\\ c & d\end{pmatrix}=\begin{pmatrix} cos\ \theta & sin\ \theta\\ -sin\ \theta & cos\ \theta\end{pmatrix},\begin{pmatrix} t_x\\t_y\end{pmatrix}=\begin{pmatrix} -(W(cos\ \theta-1)+Hsin\ \theta)/2\\(Wsin\ \theta-H(cos\ \theta-1)/2)\end{pmatrix}$
+
+	- **错切变换 Shear**
+
+		$\begin{pmatrix} a & b\\ c & d\end{pmatrix}=\begin{pmatrix} 1 & 0\\ s & 1\end{pmatrix},\begin{pmatrix} t_x\\t_y\end{pmatrix}=\begin{pmatrix} 0\\-sH/2\end{pmatrix}$
+
+	> **齐次坐标**
+	>
+	> $\begin{pmatrix}x' \\y' \\1\end{pmatrix}=\begin{pmatrix} a & b & t_x\\ c & d & t_y\\0  & 0 &1\end{pmatrix}=\begin{pmatrix}x \\y \\1\end{pmatrix}$
+	>
+	> **差值**：通常通过变换后坐标并不是整数，需要进行差值以达到更好的效果
+	>
+	> - **最近邻居插值** Nearest Neighbour Interpolation
+	>
+	> - **双线性插值** Bilinear Interpolation
+	>
+	> 	$I_1(x',y')=\Delta x\Delta y\ I_1(x_2,y_2)+\Delta x(1-\Delta y)\ I_1(x_1,y_1)+(1-\Delta x)\Delta y\ I_1(x_1,y_2)+(1-\Delta x)(1-\Delta y)I_1(x_1,y_1)$
+	>
+	> 	<img src="https://img-blog.csdnimg.cn/20181231194058746.png" alt="Bilinear Interpolation" style="zoom:50%;" />
+
+- **多项式扭曲变换 Polynomial Warps** 
+
+	$\begin{pmatrix} x_1' & y_1'\\ x_1' & y_1'\\ \vdots & \vdots\\ x_1' & y_1'\end{pmatrix}=\begin{pmatrix} 1 & x_1 & y_1 & x_1^2 & x_1y_1 & y_1^2\\ 1 & x_2 & y_2 & x_2^2 & x_2y_2 & y_2^2\\ \vdots & \vdots & \vdots & \vdots & \vdots & \vdots\\ 1 & x_m & y_m & x_m^2 & x_my_m & y_m^2\end{pmatrix}\begin{pmatrix} a_0 &b_0  \\ a_1  &b_1  \\ a_2  &b_2  \\ a_3  &b_3  \\ a_4  &b_4  \\ a_5  &b_5 \end{pmatrix}$
+
+>  **图像相似度**
+>
+> $S(I_1,I_2)=-(\sum{(I_1(x)-I_2(x))^2})$
+
+---
+
+
+
+
+
+# 三、图像滤波 Image Filtering
 
 > **目标**
 >
@@ -221,6 +324,8 @@ function B = RegionGrow(I, seed)
 > $L(I_1+I_2)=L(I_1)+L(I_2)$
 > $L(aI)=aL(I)$
 > $L(aI_1+bI_2)=aL(I_1)+bL(I_2)$
+
+
 
 ## 2. 卷积滤波 Convolutional Filters
 
@@ -307,4 +412,44 @@ https://zhuanlan.zhihu.com/p/33194385
 
   $I'=2I-K*I$, 其中 **k** 是一个反锐化mask
 
-  
+
+
+## 3. 傅里叶Domain
+
+> - 傅里叶变换是将图像转变为不同频率成分的加权和
+>
+> - 很多图像处理方法在傅里叶Domain中都非常简单，尤其是卷积操作
+> - 离散傅里叶变换的时间复杂度为 O(N^4)
+> - 快速傅里叶变换的时间复杂度为 O(N*2 logN)
+> - 特点：
+> 	- 所有自然图像的幅度谱都相似，着重于低频信息，在高频信息衰弱
+> 	- 大多数信息在phase谱中
+> - 傅里叶变换中的卷积操作
+> 	- 直接相乘即可
+
+https://zhuanlan.zhihu.com/p/163651606
+
+- 理想低频通过滤波
+
+	$K(u,v)=\left\{\begin{matrix} 0,\ u^2+v^2>r^2\\1,\ otherwise\end{matrix}\right.$
+
+- 高斯-低频通过滤波
+
+	$K(u,v)=exp(-\frac{u^2+v^2}{2\sigma^2})$
+
+- 理想高频通过滤波
+
+	$K(u,v)=\left\{\begin{matrix} 0,\ u^2+v^2<r^2\\1,\ otherwise\end{matrix}\right.$
+
+- 高斯-高频通过滤波
+
+	$K(u,v)=1-exp(-\frac{u^2+v^2}{2\sigma^2})$
+
+- 截断Band-Step 滤波
+
+	$K(u,v)=\frac{1}{1+(\Omega r/\sqrt{u^2+v^2-r_0^2})^{2n}}$
+	
+- 截通Band-Pass 滤波
+
+	$K(u,v)=1-\frac{1}{1+(\Omega r/\sqrt{u^2+v^2-r_0^2})^{2n}}$
+
