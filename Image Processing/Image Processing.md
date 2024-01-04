@@ -453,3 +453,86 @@ https://zhuanlan.zhihu.com/p/163651606
 
 	$K(u,v)=1-\frac{1}{1+(\Omega r/\sqrt{u^2+v^2-r_0^2})^{2n}}$
 
+---
+
+
+
+
+
+# 四、滤波与边缘检测 Filtering and Edge Detection
+
+> - **走样 Aliasing**：当对连续信号采样时，会发生这类现象
+> 	- 当采样频率不够高时，无法获取图像的全部信息时，发生这类现象
+> 	- 图像在不同尺度下含有不同的结构（傅里叶domain中的不同频域）
+> - 如何避免走样
+> 	- 采样频率 > 2倍图片最高频率，这个频率被称为**Nyquist Rate**
+> 	- 超采样，对于离散信号需要插值
+> 	- 通过预滤波降低图像的最大频率
+
+## 1. **高斯低频通过预滤波**
+
+图片降采样：对图像每隔一行、一列去除，但会产生走样。通过高斯滤波，再降采样
+
+
+
+## 2. **高斯金字塔**
+
+![Image Pyramid](https://pic1.zhimg.com/70/v2-ae448acdeb025c613df668dd0921012e_1440w.awebp?source=172ae18b&biz_tag=Post)
+
+- 用高斯滤波+降采样，重复k次得到一个图片金字塔
+
+
+
+## 3. 拉普拉斯金字塔
+
+<img src="https://pic4.zhimg.com/80/v2-4cace9022cf90a13cc5948b1b6c5c5a3_1440w.webp" alt="Laplace Pyramid" style="zoom:67%;" />
+
+## 4. 边缘检测
+
+- 关键步骤
+	- 图片模糊化
+	- 检测边缘点
+	- 极大抑制
+
+- **简单边缘检测：梯度核**
+
+	- Prewitt 核
+
+		$k_x=\begin{bmatrix} -1 & 0 & 1\\ -1 & 0 & 1\\ -1 & 0 & 1\end{bmatrix},k_y=\begin{bmatrix} -1 & -1 & -1\\ 0 & 0 & 0\\ 1 & 1 & 1\end{bmatrix}$
+
+	- Sobel 核
+
+		$k_x=\begin{bmatrix} -1 & 0 & 1\\ -2 & 0 & 2\\ -1 & 0 & 1\end{bmatrix},k_y=\begin{bmatrix} -1 & -2 & -1\\ 0 & 0 & 0\\ 1 & 2 & 1\end{bmatrix}$
+
+	- Robert’s Cross Operator
+
+		$k_1=\begin{bmatrix} 0 & 1\\ -1 & 0\end{bmatrix},k_2=\begin{bmatrix} 1 & 0\\ 0 & -1\end{bmatrix}$
+
+- **Canny边缘检测**
+
+	- 将噪声缩减和边缘强化结合
+	- 边缘定位：非极大值抑制 / Hysteresis thresholding
+
+- **模型拟合**
+
+	- 通过拟合一个平面来定位边缘
+	- 用方向、位置、像素值等参数创建平面
+	- 在每个小窗口中找到L2最小拟合
+	- 当达到阈值时停止拟合
+
+- **总结**
+
+	- 一阶导方式
+		- 快速、简单、易于理解
+		- 对噪声敏感、丢失交点、需要选择大量阈值
+	- 二阶导方式
+		- 快速、需要少量阈值
+		- 对噪声非常敏感
+	- 模型拟合
+		- 慢速
+		- 对噪声不敏感
+	- 如何检验边缘检测器的表现
+		- 假边缘的概率
+		- 丢失边缘的概率
+		- 边缘角度的损失
+		- 和真实值的MSE
