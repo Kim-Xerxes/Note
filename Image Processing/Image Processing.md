@@ -39,10 +39,9 @@
 	曲线上每个点反映着对同一信号刺激的感受，横轴为假正率（特异度）， 纵轴为真正率（灵敏度）
 
 	曲线的面积为AUC值，越大越好
-
-	![ROC曲线](https://ask.qcloudimg.com/http-save/yehe-7969553/hirzm1wjyv.png)
-
+![ROC曲线](https://ask.qcloudimg.com/http-save/yehe-7969553/hirzm1wjyv.png)
 	
+
 
 ## 2. 阈值分割 Thresholding
 
@@ -290,9 +289,8 @@ https://blog.csdn.net/webzhuce/article/details/81431512
 	> - **双线性插值** Bilinear Interpolation
 	>
 	> 	$I_1(x',y')=\Delta x\Delta y\ I_1(x_2,y_2)+\Delta x(1-\Delta y)\ I_1(x_1,y_1)+(1-\Delta x)\Delta y\ I_1(x_1,y_2)+(1-\Delta x)(1-\Delta y)I_1(x_1,y_1)$
-	>
-	> 	<img src="https://img-blog.csdnimg.cn/20181231194058746.png" alt="Bilinear Interpolation" style="zoom:50%;" />
-
+	><img src="https://img-blog.csdnimg.cn/20181231194058746.png" alt="Bilinear Interpolation" style="zoom:50%;" />
+	
 - **多项式扭曲变换 Polynomial Warps** 
 
 	$\begin{pmatrix} x_1' & y_1'\\ x_1' & y_1'\\ \vdots & \vdots\\ x_1' & y_1'\end{pmatrix}=\begin{pmatrix} 1 & x_1 & y_1 & x_1^2 & x_1y_1 & y_1^2\\ 1 & x_2 & y_2 & x_2^2 & x_2y_2 & y_2^2\\ \vdots & \vdots & \vdots & \vdots & \vdots & \vdots\\ 1 & x_m & y_m & x_m^2 & x_my_m & y_m^2\end{pmatrix}\begin{pmatrix} a_0 &b_0  \\ a_1  &b_1  \\ a_2  &b_2  \\ a_3  &b_3  \\ a_4  &b_4  \\ a_5  &b_5 \end{pmatrix}$
@@ -536,3 +534,132 @@ https://zhuanlan.zhihu.com/p/163651606
 		- 丢失边缘的概率
 		- 边缘角度的损失
 		- 和真实值的MSE
+
+---
+
+
+
+
+
+# 五、Harris角点检测
+
+> - 动机：在做双目视觉或者运动预测时，需要找到两帧图像的对应位置
+>
+> 	匹配时不应该用没有特点的patch，应该选用在短时间内相同的patch
+>
+> 	应该选用轮廓的交界处、随着视角的变化是稳定的、在点的周围梯度是剧烈变化的
+
+## 1. **基本概念**
+
+- 在像素点附近的偏移值
+
+	$E(u,v)=\sum{w(x,y)[I(x+u,y+v)-I(x,y)]^2}$
+
+- 使用一阶泰勒展开得到近似值
+
+	$E(u,v)=\begin{bmatrix} u &v\end{bmatrix}\ M\begin{bmatrix} u\\v\end{bmatrix}$
+	
+	$M=\sum{w(x,y)\begin{bmatrix} I_x^2 & I_xI_y\\ I_xI_y &I_y^2\end{bmatrix}}$
+
+## 2. **解析M矩阵**
+
+- 对M矩阵进行特征值分解得到 $M=\sum{\begin{bmatrix} I_x^2 & I_xI_y\\ I_xI_y &I_y^2\end{bmatrix}}=R^{-1}\begin{bmatrix} \lambda_1 &0 \\ 0 &\lambda_2\end{bmatrix}R$
+		
+	这表明主要梯度方向是平行于x或y轴，如果lambda有一个接近0，则不是一个角点<img src="https://pic2.zhimg.com/80/v2-f751b58eec5ad37a33a8915714d2a8f1_1440w.webp" style="zoom:50%;" />
+
+## 3. 具体响应
+
+- $R=det\ M-k(trace\ M)^2$
+	$det\ M=\lambda_1\lambda_2$
+	$trace\ M=\lambda_1+\lambda_2$
+	$k\in[0.04,0.06]$
+	<img src="https://pic4.zhimg.com/80/v2-7e2bbfea5255968cd691f060277185df_1440w.webp" style="zoom:50%;" />
+
+## 4. 特点
+
+- 旋转不变性：因为使用特征值分解
+- 非尺度不变性：如果一个角点是非常大的则会被认为一个边缘
+
+---
+
+
+
+
+
+# 六、SIFT 尺度可变性检测器
+
+> **动机**
+>
+> - Harris角点检测对尺度具有可变性
+> - 为了进行图像匹配，需要开发一种对寻转和尺寸不变的检测器
+
+## 1. 基本概念
+
+- **基本思想**：将图片信息转变到局部特征坐标系中，并且对旋转、变换、缩放等操作具有不变性
+- **大致步骤**
+	1. 缩放空间检测：在图片不同的尺寸和位置中搜索
+	2. 关键点定位：用一个模型确定关键点的尺度和位置
+	3. 定位：为每个关键点定位最好的位置
+	4. 关键点描述：对于选中的缩放尺寸和旋转，用局部梯度描述每个关键点区域
+
+
+
+## 2. 缩放空间检测 Scale-space extreme detection
+
+- **目标**：对于一个物体，在不同的角度下观察，找到关键点的位置和缩放尺度
+
+- **方法**：对不同的缩放尺度，使用一个连续的方程寻找稳定的特征；使用**高斯**方程是一个合适的选择
+
+- **缩放空间**：是一个从高斯核卷积产生的特征
+
+
+
+## 3. 关键点定位 Key point localization
+
+- 检测DoG中的最大值和最小值（DoG: Difference of Gaussian，使用高斯金字塔）
+- 对于每个像素点，和当前尺度的周围8个邻居比较，还有上下两个尺度各9个邻居比较
+![DoG](https://img-blog.csdnimg.cn/20190316143237143.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQwMzY5OTI2,size_16,color_FFFFFF,t_70)
+- 一旦找到了关键点，还需要步骤来得到精确的定位，海森矩阵可以消除边缘响应![](https://img-blog.csdnimg.cn/20190316143408240.png)
+
+
+
+## 4. 关键点主方向分配
+
+- 在关键点的邻域内，使用直方图统计邻域内像素的梯度和方向，直方图的峰值将作为关键点的主方向
+- 随后可以计算出对应的特征旋转的角度如何，并可以进行还原，使用双线性插值还原像素值
+
+​	<img src="https://img-blog.csdnimg.cn/20190316143609387.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzQwMzY5OTI2,size_16,color_FFFFFF,t_70" style="zoom:80%;" />
+
+
+
+## 5. 关键点描述
+
+- 在每个关键点，有位置、缩放、方向信息
+- 接下来计算这个关键区域的描述子，需要这个描述子是高度可区分的，并且具有不变性
+- **步骤**
+	1. 将所选的关键点及其邻域旋转到正确的方向，并且缩放到对应的尺度
+	2. 对每个像素计算梯度
+	3. 将像素分成若干组
+	4. 对于每一组（方块），计算梯度直方图（为了去除光照影响，可以给所有像素加上一个值，并均值化）
+	5. 最终拼接所有块的直方图信息，得到一个特征向量
+
+
+
+## 6. SIFT的应用
+
+- 特征点可以用于
+	- 图像匹配
+	- 3D重建
+	- 图像追踪
+	- 物体识别
+	- 数据库存取
+	- 机器导航
+
+---
+
+
+
+
+
+# 七、光流 Optical Flow
+
