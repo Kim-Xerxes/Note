@@ -674,4 +674,6 @@ https://zhuanlan.zhihu.com/p/163651606
 	- 运动小：特征点的运动幅度小
 	- 空间连贯性：特征点运动于邻居相似
 - **亮度不变性**
+	- $I(x,y,t)=I(x+u,y+v,t+1)\approx I(x,y,t)+I_x·u+I_y·v+I_t$
+	- $I_x·u+I_y·v+I_t\approx 0\rightarrow\nabla I·[u\ v]^T+I_t=0$
 	- 
